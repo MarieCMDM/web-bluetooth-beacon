@@ -1,19 +1,4 @@
 <!doctype html>
-<!--
-Copyright 2023 Google Inc. All Rights Reserved.
-
-Licensed under the Apache License, Version 2.0 (the "License");
-you may not use this file except in compliance with the License.
-You may obtain a copy of the License at
-
-  http://www.apache.org/licenses/LICENSE-2.0
-
-Unless required by applicable law or agreed to in writing, software
-distributed under the License is distributed on an "AS IS" BASIS,
-WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-See the License for the specific language governing permissions and
-limitations under the License.
--->
 <html lang="en">
   <head>
     <meta charset="utf-8">
@@ -34,9 +19,8 @@ limitations under the License.
       });
     </script>
     
-    
-    
-    
+    <link rel="stylesheet" href="https://pyscript.net/latest/pyscript.css" />
+    <script defer src="https://pyscript.net/latest/pyscript.js"></script>
     <!-- <link rel="icon" href="icon.png"> -->
     
     <link rel="stylesheet" href="./styles/main.css">
@@ -47,21 +31,12 @@ limitations under the License.
   <body>
     <!-- <img class="pageIcon" src="icon.png"> -->
     <h1>Web Bluetooth / Scanning Sample</h1>
-    <p class="availability">
-      Available in <a target="_blank" href="https://www.chromestatus.com/feature/5346724402954240">Chrome 79+</a> |
-      <a target="_blank" href="https://github.com/googlechrome/samples/blob/gh-pages/web-bluetooth/scan.html">View on GitHub</a> |
-      <a  href="index.html">Browse Samples</a>
-    </p>
-    <p>The <a href="https://developers.google.com/web/updates/2015/07/interact-with-ble-devices-on-the-web">Web Bluetooth
-  API</a> lets websites discover and communicate with devices over the
-Bluetooth 4 wireless standard using the Generic Attribute Profile (GATT). It is
-currently partially implemented in Android M, Chrome OS, Mac, and Windows 10.</p>
 
-<!-- <script>
+<script>
   if('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js');
   }
-</script> -->
+</script>
 
 <script>
   window.addEventListener('DOMContentLoaded', function() {
@@ -104,14 +79,6 @@ currently partially implemented in Android M, Chrome OS, Mac, and Windows 10.</p
   });
 </script>
 
-
-<p>This sample illustrates basic use of the Web Bluetooth Scanning API to
-report advertising packets from nearby Bluetooth Low Energy Devices.</p>
-
-<p>Note: Scanning is still under development. You must be using Chrome 79+
-with the <code>chrome://flags/#enable-experimental-web-platform-features</code>
-flag enabled.</p>
-
 <form>
   <label for="allAdvertisements">All Advertisements</label>
   <input id="allAdvertisements" type="checkbox">
@@ -148,13 +115,41 @@ flag enabled.</p>
   };
 </script>
 
+<py-script>
+import socket
+
+print("Waiting for connections")
+scontrol = socket.socket(
+    socket.AF_BLUETOOTH, socket.SOCK_SEQPACKET, socket.BTPROTO_L2CAP)  # BluetoothSocket(L2CAP)
+sinterrupt = socket.socket(
+    socket.AF_BLUETOOTH, socket.SOCK_SEQPACKET, socket.BTPROTO_L2CAP)  # BluetoothSocket(L2CAP)
+scontrol.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+sinterrupt.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+# bind these sockets to a port - port zero to select next available
+scontrol.bind((socket.BDADDR_ANY, self.P_CTRL))
+sinterrupt.bind((socket.BDADDR_ANY, self.P_INTR))
+
+# Start listening on the server sockets
+scontrol.listen(5)  # Limit of 1 connection
+sinterrupt.listen(5)
+
+ccontrol, cinfo = scontrol.accept()
+print ("Got a connection on the control channel from " + cinfo[0])
+
+cinterrupt, cinfo = sinterrupt.accept()
+print ("Got a connection on the interrupt channel from " + cinfo[0])
+
+# send a string to the bluetooth host machine 
+
+</py-script>
+
+
 <h3>Live Output</h3>
 <div id="output" class="output">
   <div id="content"></div>
   <div id="status"></div>
   <pre id="log"></pre>
 </div>
-
 
 <script>
   if (/Chrome\/(\d+\.\d+.\d+.\d+)/.test(navigator.userAgent)){
@@ -165,84 +160,63 @@ flag enabled.</p>
     }
   }
 </script>
+   
+<script>async function onButtonClick() {
 
+  let filters = [];
 
+  let filterName = document.querySelector('#name').value;
+  if (filterName) {
+    filters.push({name: filterName});
+  }
 
+  let filterNamePrefix = document.querySelector('#namePrefix').value;
+  if (filterNamePrefix) {
+    filters.push({namePrefix: filterNamePrefix});
+  }
 
-  
-    
-      <script>async function onButtonClick() {
-        navigator.bluetooth.addEventListener("advertisementreceived", (event) => {
-            console.log(
-            `Advertisement received, device: ${event.name}, RSSI: ${event.rssi}dB`
-            );
-            event.manufacturerData.forEach((valueDataView, key) => {
-            console.log("Manufacturer data:", `0x${valueDataView.getUint16().toString(16)}`);
-            });
-            event.serviceData.forEach((valueDataView, key) => {
-            console.log("Service data:", `0x${valueDataView.getUint16().toString(16)}`);
-            });
-        });
-        const options = {
-            filters: [{ namePrefix: "1-800" }],
-        };
-        await navigator.bluetooth.requestLEScan(options);
+  let options = {};
+  if (document.querySelector('#allAdvertisements').checked) {
+    options.acceptAllAdvertisements = true; 
+  } else {
+    options.filters = filters;
+  }
 
-//   let filters = [];
+  try {
+    log('Requesting Bluetooth Scan with options: ' + JSON.stringify(options));
+    const scan = await navigator.bluetooth.requestLEScan(options);
 
-//   let filterName = document.querySelector('#name').value;
-//   if (filterName) {
-//     filters.push({name: filterName});
-//   }
+    log('Scan started with:');
+    log(' acceptAllAdvertisements: ' + scan.acceptAllAdvertisements);
+    log(' active: ' + scan.active);
+    log(' keepRepeatedDevices: ' + scan.keepRepeatedDevices);
+    log(' filters: ' + JSON.stringify(scan.filters));
 
-//   let filterNamePrefix = document.querySelector('#namePrefix').value;
-//   if (filterNamePrefix) {
-//     filters.push({namePrefix: filterNamePrefix});
-//   }
+    navigator.bluetooth.addEventListener('advertisementreceived', event => {
+      log('@----#----@----#----@----#----@----#----@----#----@');
+      log('Advertisement received.');
+      log('  Device Name: ' + event.device.name);
+      log('  Device ID: ' + event.device.id);
+      log('  RSSI: ' + event.rssi);
+      log('  TX Power: ' + event.txPower);
+      log('  UUIDs: ' + event.uuids);
+      event.manufacturerData.forEach((valueDataView, key) => {
+        logDataView('Manufacturer', key, valueDataView);
+      });
+      event.serviceData.forEach((valueDataView, key) => {
+        logDataView('Service', key, valueDataView);
+      });
+    });
 
-//   let options = {};
-//   if (document.querySelector('#allAdvertisements').checked) {
-//     options.acceptAllAdvertisements = true; 
-//     // options.acceptAllDevices = true;
-//   } else {
-//     options.filters = filters;
-//   }
-
-//   try {
-//     log('Requesting Bluetooth Scan with options: ' + JSON.stringify(options));
-//     // const scan = await navigator.bluetooth.requestDevice(options);
-//     const scan = await navigator.bluetooth.requestLEScan(options);
-
-//     log('Scan started with:');
-//     log(' acceptAllAdvertisements: ' + scan.acceptAllAdvertisements);
-//     log(' active: ' + scan.active);
-//     log(' keepRepeatedDevices: ' + scan.keepRepeatedDevices);
-//     log(' filters: ' + JSON.stringify(scan.filters));
-
-//     navigator.bluetooth.addEventListener('advertisementreceived', event => {
-//       log('Advertisement received.');
-//       log('  Device Name: ' + event.device.name);
-//       log('  Device ID: ' + event.device.id);
-//       log('  RSSI: ' + event.rssi);
-//       log('  TX Power: ' + event.txPower);
-//       log('  UUIDs: ' + event.uuids);
-//       event.manufacturerData.forEach((valueDataView, key) => {
-//         logDataView('Manufacturer', key, valueDataView);
-//       });
-//       event.serviceData.forEach((valueDataView, key) => {
-//         logDataView('Service', key, valueDataView);
-//       });
-//     });
-
-//     setTimeout(stopScan, 10000);
-//     function stopScan() {
-//       log('Stopping scan...');
-//       scan.stop();
-//       log('Stopped.  scan.active = ' + scan.active);
-//     }
-//   } catch(error)  {
-//     log('Argh! ' + error);
-//   }
+    setTimeout(stopScan, 10000);
+    function stopScan() {
+      log('Stopping scan...');
+      scan.stop();
+      log('Stopped.  scan.active = ' + scan.active);
+    }
+  } catch(error)  {
+    log('Argh! ' + error);
+  }
 }
 
 /* Utils */
@@ -260,84 +234,6 @@ const logDataView = (labelOfDataSource, key, valueDataView) => {
 </script>
     
   
-
-  
-    <h3>JavaScript Snippet</h3>
-  
-
-  
-    <figure class="highlight"><pre><code class="language-js" data-lang="js"><span class="k">async</span> <span class="kd">function</span> <span class="nx">onButtonClick</span><span class="p">()</span> <span class="p">{</span>
-  <span class="kd">let</span> <span class="nx">filters</span> <span class="o">=</span> <span class="p">[];</span>
-
-  <span class="kd">let</span> <span class="nx">filterName</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="dl">'</span><span class="s1">#name</span><span class="dl">'</span><span class="p">).</span><span class="nx">value</span><span class="p">;</span>
-  <span class="k">if</span> <span class="p">(</span><span class="nx">filterName</span><span class="p">)</span> <span class="p">{</span>
-    <span class="nx">filters</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="na">name</span><span class="p">:</span> <span class="nx">filterName</span><span class="p">});</span>
-  <span class="p">}</span>
-
-  <span class="kd">let</span> <span class="nx">filterNamePrefix</span> <span class="o">=</span> <span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="dl">'</span><span class="s1">#namePrefix</span><span class="dl">'</span><span class="p">).</span><span class="nx">value</span><span class="p">;</span>
-  <span class="k">if</span> <span class="p">(</span><span class="nx">filterNamePrefix</span><span class="p">)</span> <span class="p">{</span>
-    <span class="nx">filters</span><span class="p">.</span><span class="nx">push</span><span class="p">({</span><span class="na">namePrefix</span><span class="p">:</span> <span class="nx">filterNamePrefix</span><span class="p">});</span>
-  <span class="p">}</span>
-
-  <span class="kd">let</span> <span class="nx">options</span> <span class="o">=</span> <span class="p">{};</span>
-  <span class="k">if</span> <span class="p">(</span><span class="nb">document</span><span class="p">.</span><span class="nx">querySelector</span><span class="p">(</span><span class="dl">'</span><span class="s1">#allAdvertisements</span><span class="dl">'</span><span class="p">).</span><span class="nx">checked</span><span class="p">)</span> <span class="p">{</span>
-    <span class="nx">options</span><span class="p">.</span><span class="nx">acceptAllAdvertisements</span> <span class="o">=</span> <span class="kc">true</span><span class="p">;</span>
-  <span class="p">}</span> <span class="k">else</span> <span class="p">{</span>
-    <span class="nx">options</span><span class="p">.</span><span class="nx">filters</span> <span class="o">=</span> <span class="nx">filters</span><span class="p">;</span>
-  <span class="p">}</span>
-
-  <span class="k">try</span> <span class="p">{</span>
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Requesting Bluetooth Scan with options: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">options</span><span class="p">));</span>
-    <span class="kd">const</span> <span class="nx">scan</span> <span class="o">=</span> <span class="k">await</span> <span class="nb">navigator</span><span class="p">.</span><span class="nx">bluetooth</span><span class="p">.</span><span class="nx">requestLEScan</span><span class="p">(</span><span class="nx">options</span><span class="p">);</span>
-
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Scan started with:</span><span class="dl">'</span><span class="p">);</span>
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1"> acceptAllAdvertisements: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">scan</span><span class="p">.</span><span class="nx">acceptAllAdvertisements</span><span class="p">);</span>
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1"> active: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">scan</span><span class="p">.</span><span class="nx">active</span><span class="p">);</span>
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1"> keepRepeatedDevices: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">scan</span><span class="p">.</span><span class="nx">keepRepeatedDevices</span><span class="p">);</span>
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1"> filters: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">JSON</span><span class="p">.</span><span class="nx">stringify</span><span class="p">(</span><span class="nx">scan</span><span class="p">.</span><span class="nx">filters</span><span class="p">));</span>
-
-    <span class="nb">navigator</span><span class="p">.</span><span class="nx">bluetooth</span><span class="p">.</span><span class="nx">addEventListener</span><span class="p">(</span><span class="dl">'</span><span class="s1">advertisementreceived</span><span class="dl">'</span><span class="p">,</span> <span class="nx">event</span> <span class="o">=&gt;</span> <span class="p">{</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Advertisement received.</span><span class="dl">'</span><span class="p">);</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">  Device Name: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">event</span><span class="p">.</span><span class="nx">device</span><span class="p">.</span><span class="nx">name</span><span class="p">);</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">  Device ID: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">event</span><span class="p">.</span><span class="nx">device</span><span class="p">.</span><span class="nx">id</span><span class="p">);</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">  RSSI: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">event</span><span class="p">.</span><span class="nx">rssi</span><span class="p">);</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">  TX Power: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">event</span><span class="p">.</span><span class="nx">txPower</span><span class="p">);</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">  UUIDs: </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">event</span><span class="p">.</span><span class="nx">uuids</span><span class="p">);</span>
-      <span class="nx">event</span><span class="p">.</span><span class="nx">manufacturerData</span><span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">valueDataView</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-        <span class="nx">logDataView</span><span class="p">(</span><span class="dl">'</span><span class="s1">Manufacturer</span><span class="dl">'</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">valueDataView</span><span class="p">);</span>
-      <span class="p">});</span>
-      <span class="nx">event</span><span class="p">.</span><span class="nx">serviceData</span><span class="p">.</span><span class="nx">forEach</span><span class="p">((</span><span class="nx">valueDataView</span><span class="p">,</span> <span class="nx">key</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-        <span class="nx">logDataView</span><span class="p">(</span><span class="dl">'</span><span class="s1">Service</span><span class="dl">'</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">valueDataView</span><span class="p">);</span>
-      <span class="p">});</span>
-    <span class="p">});</span>
-
-    <span class="nx">setTimeout</span><span class="p">(</span><span class="nx">stopScan</span><span class="p">,</span> <span class="mi">10000</span><span class="p">);</span>
-    <span class="kd">function</span> <span class="nx">stopScan</span><span class="p">()</span> <span class="p">{</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Stopping scan...</span><span class="dl">'</span><span class="p">);</span>
-      <span class="nx">scan</span><span class="p">.</span><span class="nx">stop</span><span class="p">();</span>
-      <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Stopped.  scan.active = </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">scan</span><span class="p">.</span><span class="nx">active</span><span class="p">);</span>
-    <span class="p">}</span>
-  <span class="p">}</span> <span class="k">catch</span><span class="p">(</span><span class="nx">error</span><span class="p">)</span>  <span class="p">{</span>
-    <span class="nx">log</span><span class="p">(</span><span class="dl">'</span><span class="s1">Argh! </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">error</span><span class="p">);</span>
-  <span class="p">}</span>
-<span class="p">}</span>
-
-<span class="cm">/* Utils */</span>
-
-<span class="kd">const</span> <span class="nx">logDataView</span> <span class="o">=</span> <span class="p">(</span><span class="nx">labelOfDataSource</span><span class="p">,</span> <span class="nx">key</span><span class="p">,</span> <span class="nx">valueDataView</span><span class="p">)</span> <span class="o">=&gt;</span> <span class="p">{</span>
-  <span class="kd">const</span> <span class="nx">hexString</span> <span class="o">=</span> <span class="p">[...</span><span class="k">new</span> <span class="nb">Uint8Array</span><span class="p">(</span><span class="nx">valueDataView</span><span class="p">.</span><span class="nx">buffer</span><span class="p">)].</span><span class="nx">map</span><span class="p">(</span><span class="nx">b</span> <span class="o">=&gt;</span> <span class="p">{</span>
-    <span class="k">return</span> <span class="nx">b</span><span class="p">.</span><span class="nx">toString</span><span class="p">(</span><span class="mi">16</span><span class="p">).</span><span class="nx">padStart</span><span class="p">(</span><span class="mi">2</span><span class="p">,</span> <span class="dl">'</span><span class="s1">0</span><span class="dl">'</span><span class="p">);</span>
-  <span class="p">}).</span><span class="nx">join</span><span class="p">(</span><span class="dl">'</span><span class="s1"> </span><span class="dl">'</span><span class="p">);</span>
-  <span class="kd">const</span> <span class="nx">textDecoder</span> <span class="o">=</span> <span class="k">new</span> <span class="nx">TextDecoder</span><span class="p">(</span><span class="dl">'</span><span class="s1">ascii</span><span class="dl">'</span><span class="p">);</span>
-  <span class="kd">const</span> <span class="nx">asciiString</span> <span class="o">=</span> <span class="nx">textDecoder</span><span class="p">.</span><span class="nx">decode</span><span class="p">(</span><span class="nx">valueDataView</span><span class="p">.</span><span class="nx">buffer</span><span class="p">);</span>
-  <span class="nx">log</span><span class="p">(</span><span class="s2">`  </span><span class="p">${</span><span class="nx">labelOfDataSource</span><span class="p">}</span><span class="s2"> Data: `</span> <span class="o">+</span> <span class="nx">key</span> <span class="o">+</span>
-      <span class="dl">'</span><span class="se">\n</span><span class="s1">    (Hex) </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">hexString</span> <span class="o">+</span>
-      <span class="dl">'</span><span class="se">\n</span><span class="s1">    (ASCII) </span><span class="dl">'</span> <span class="o">+</span> <span class="nx">asciiString</span><span class="p">);</span>
-<span class="p">};</span></code></pre></figure>
-  
-
-
-
 <script>
   document.querySelector('form').addEventListener('submit', function(event) {
     event.stopPropagation();
@@ -364,17 +260,5 @@ const logDataView = (labelOfDataSource, key, valueDataView) => {
   }
 </script>
 
-
-    
-    <script>
-      /* jshint ignore:start */
-      (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-          (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-        m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-      })(window,document,'script','https://www.google-analytics.com/analytics.js','ga');
-      ga('create', 'UA-53563471-1', 'auto');
-      ga('send', 'pageview');
-      /* jshint ignore:end */
-    </script>
-  </body>
+</body>
 </html>
