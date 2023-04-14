@@ -1,0 +1,261 @@
+BLE Beacon scanner Project
+
+
+
+GOAL:
+
+Scan for Bluetooth LE beacons (Advertisement broadcast message) and broadcasting one of them using the web Browser.
+
+Using the web browser will abstract to the maximum the hardware and will not require hardware/system dedicated code and maximum portability of the application,
+
+The aim of this project is to have a web page that works with every device (Windows, Linux, MacOS, Android, iPhone) without installing anything exept a web browser.
+
+
+
+APPROACH:
+
+I found in the WEB Bluetooth API the Javascript library that that project need. Theese APIs are on development so at the moment not all functions works on all browsers and still some functions are not implemented.
+
+Being developed by the chromium team these APIs works with chromium based Browsers, like Google Chrome and Microsoft Edge, Opera is good supported and Samsung Browser is also working. Theres no support for Mozzilla and Safari.
+
+
+
+IMPLEMENTATION STATUS:
+
+For make the page work on Chromium it is need to enable chrome://flags/#enable-experimental-web-platform-features triangular_flag_on_post flag.
+
+On Opera need to enable the flag opera://flags/#enable-web-bluetooth.
+
+ More infos about the implementation can be found at: https://github.com/WebBluetoothCG/web-bluetooth/blob/main/implementation-status.md
+
+For this particular project the WEB BLuetooth API function requestLEScan() works only on Chrome for Android and MacOS(not direcly tested), requestLEScan() also require a user interaction to start, so there’s need to click on the page to activate the scan function.
+
+Due to the lack of development-tools tab on Chrome for android i use the on screen log sample from Google samples to display BLE advertising devices just for confirm that the scripts are working.
+
+ WEB Bluetooth API is still in development and there isn't an implementation for broadcast a bluetooth message. so i wasn't able to send a replicate a BLE message.
+
+
+
+CODE AND FUNCTIONS:
+
+On page load theese scripts are executed for check browser compatibility
+
+ <script>
+
+    // Add a global error event listener early on in the page load, to help ensure that browsers
+
+    // which don't support specific functionality still end up displaying a meaningful message.
+
+    window.addEventListener('error', function(error) {
+
+      if (ChromeSamples && ChromeSamples.setStatus) {
+
+        console.error(error);
+
+        ChromeSamples.setStatus(error.message + ' (Your browser may not support this feature.)');
+
+        error.preventDefault();
+
+      }
+
+    });
+
+</script>
+
+<script>
+
+    log = ChromeSamples.log;
+
+    function isWebBluetoothEnabled() {
+
+      if (navigator.bluetooth) {
+
+        return true;
+
+      } else {
+
+        ChromeSamples.setStatus('Web Bluetooth API is not available.\n' +
+
+            'Please make sure the "Experimental Web Platform features" flag is enabled.');
+
+        return false;
+
+      }
+
+    }
+
+  </script>
+
+Theeses scripts logs on Chrome console and on the on page log an Error, if Bluetooth is disabled, if theres error in the code or if the browser is not compatible, actually they not recognize if requestLEScan is runned on non-compatible system.
+
+
+
+The following script is the on-screen log Object that i've copied from Google samples
+
+<script>
+
+    var ChromeSamples = {
+
+      log: function() {
+
+        var line = Array.prototype.slice.call(arguments).map(function(argument) {
+
+          return typeof argument === 'string' ? argument : JSON.stringify(argument);
+
+        }).join(' ');
+
+        document.querySelector('#log').textContent += line + '\n';
+
+      },
+
+      clearLog: function() {
+
+        document.querySelector('#log').textContent = '';
+
+      },
+
+      setStatus: function(status) {
+
+        document.querySelector('#status').textContent = status;
+
+      },
+
+      setContent: function(newContent) {
+
+        var content = document.querySelector('#content');
+
+        while(content.hasChildNodes()) {
+
+          content.removeChild(content.lastChild);
+
+        }
+
+        content.appendChild(newContent);
+
+      }
+
+    };
+
+  </script>
+
+  and use this <div> on the body to write:
+
+  <div id="output" class="output">
+
+    <div id="content"></div>
+
+    <div id="status"></div>
+
+    <pre id="log"></pre>
+
+  </div>
+
+
+
+The next one is the main script the one that scan for devices and log the BLE that are advertising
+
+<script>async function scan() {
+
+    let options = {};
+
+    options.acceptAllAdvertisements = true;
+
+    try {
+
+      log('Scan for all BLE devices...');
+
+      const scan = await navigator.bluetooth.requestLEScan(options);
+
+
+
+      log('Scan started with:');
+
+      log(' acceptAllAdvertisements: ' + scan.acceptAllAdvertisements);
+
+      log(' active: ' + scan.active);
+
+
+
+      navigator.bluetooth.addEventListener('advertisementreceived', event => {
+
+        log(' ');
+
+        log(' ');
+
+        log('Advertisement received.');
+
+        log('  Device Name: ' + event.device.name);
+
+        log('  Device ID: ' + event.device.id);
+
+        log('  RSSI: ' + event.rssi);
+
+        log('  TX Power: ' + event.txPower);
+
+        log('  UUIDs: ' + event.uuids);
+
+      });
+
+
+
+      setInterval(clearlog, 2000);
+
+
+
+    } catch(error)  {
+
+      log('An error occured! ' + error);
+
+    }
+
+  }
+
+  </script>
+
+options are set for recive all ble advertisements, can be applied filters instead but is not my interest at the moment,
+
+scan is the navigator.bluetooth.requestLEScan(acceptAllAdvertisements);
+
+for every advertisement recived it logs on screen some infos about the BLE device.
+
+and clear the log every 2 seconds for keep the page on "readable" dimension.
+
+
+
+Last one is the script that starts the scanner with some visual tweaks for not have an incredible ugly page.
+
+
+
+<script>
+
+    /* navigator.requestLeScan requires user action to be executed */
+
+    document.addEventListener('click', function(event) {
+
+      event.stopPropagation();
+
+      event.preventDefault();
+
+      document.getElementById('startscan').style.visibility='hidden';
+
+      document.getElementById('liveoutput').style.visibility='visible';
+
+      document.getElementById('output').style.visibility='visible';
+
+      if (isWebBluetoothEnabled()) {
+
+        clearlog();
+
+        scan();
+
+      }
+
+    });
+
+</script>
+
+
+
+As say before the requestLEScan function require a user interaction to open a dialog window and confirm bluetooth access, to avoid the use of a button i've set a click on the entire page as triggher to start the scan function. and set a div with instructions that hides when the click is performed, also on click the log div becomes visible and logs start appear.
+
+I'm going to implement a click simulation function to try start automatically on load the scan function.
